@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
-	"lxq"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +14,7 @@ import (
 )
 func main() {
 	router := gin.Default()
-	lxq.group(router)
+	group(router)
 	router.POST("/post", func(c *gin.Context) {
 
 		ids := c.QueryMap("ids")

@@ -1,4 +1,4 @@
-package lxq
+package main
 
 import (
 	"fmt"
