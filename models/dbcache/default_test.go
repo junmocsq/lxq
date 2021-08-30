@@ -93,7 +93,7 @@ func BenchmarkPrepare1(b *testing.B) {
 		var user UserTest
 		tx := db.Session(&gorm.Session{PrepareStmt: true})
 		tx.First(&user, 1)
-		tx.Where("age>?",10).Find(&users)
+		tx.Where("age>?", 10).Find(&users)
 	}
 
 }
@@ -107,7 +107,7 @@ func BenchmarkPrepare2(b *testing.B) {
 		var users []UserTest
 		var user UserTest
 		db.First(&user, 1)
-		db.Where("age>?",10).Find(&users)
+		db.Where("age>?", 10).Find(&users)
 	}
 }
 

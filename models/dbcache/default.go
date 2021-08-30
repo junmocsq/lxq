@@ -60,7 +60,7 @@ func SetTag(tag string, sql string, data interface{}) bool {
 	if tagCache == "" {
 		tagCache = time.Now().String() + fmt.Sprintf("%d", rand.Int63())
 		r.SETEX(tag, tagCache, expire)
-	}else {
+	} else {
 		r.EXPIRE(tag, expire)
 	}
 	s := emptyString

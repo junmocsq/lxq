@@ -12,6 +12,6 @@ type User struct {
 	Gender     uint8
 	WhatIsUp   string
 	LoginTime  int64
-	CreatedAt  int64
-	UpdatedAt  int64
+	CreatedAt  int64 `gorm:"autoUpdateTime"`
+	UpdatedAt  int64 `gorm:"autoCreateTime"`
 }

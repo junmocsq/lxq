@@ -35,5 +35,3 @@ func Password(passwd string, salt ...string) string {
 	io.WriteString(s, ss)
 	return fmt.Sprintf("%x", s.Sum(nil))
 }
-
-

@@ -12,7 +12,9 @@ import (
 	"syscall"
 	"time"
 )
+
 func main() {
+
 	router := gin.Default()
 	group(router)
 	router.POST("/post", func(c *gin.Context) {
