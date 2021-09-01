@@ -2,8 +2,10 @@ package dbcache
 
 import (
 	"database/sql"
+	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -21,81 +23,73 @@ type UserTest struct {
 }
 
 func TestCache(t *testing.T) {
-	SetTag("junmo", "csq", nil)
-	dsn := "root:123456@tcp(127.0.0.1:3306)/lxq?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := NewDb()
+	db.DB().AutoMigrate(&UserTest{})
+}
+
+func ExampleDao_Exec() {
+	db := NewDb()
 	var user1 = UserTest{
-		ID:       1,
-		Name:     "junmo",
+		ID:       3,
+		Name:     "junmocsq",
 		Email:    nil,
 		Age:      100,
 		Birthday: nil,
 	}
-	stmt := db.Session(&gorm.Session{DryRun: true}).Create(&user1).Statement
-	stmt.SQL.String() //=> SELECT * FROM `users` WHERE `id` = $1 ORDER BY `id`
-	// 注意：SQL 并不总是能安全地执行，GORM 仅将其用于日志，它可能导致会 SQL 注入
-	sql := db.Dialector.Explain(stmt.SQL.String(), stmt.Vars...)
-	// SELECT * FROM `users` WHERE `id` = 1
-	r := db.Create(&user1)
-	t.Log(user1, r.Error)
+	db.DB().AutoMigrate(&UserTest{})
 
+	tag := "users000"
+	stmt := db.DryRun().Delete(&user1).Statement
+	db.SetTag(tag).PrepareSql(stmt.SQL.String(), stmt.Vars...).EXEC()
+	stmt = db.DryRun().Create(&user1).Statement
+	n, err := db.SetTag(tag).PrepareSql(stmt.SQL.String(), stmt.Vars...).EXEC()
+	fmt.Println(n, err)
+	// OutPut: 1 <nil>
+}
+
+func ExampleDao_Fetch() {
+	db := NewDb()
 	var user UserTest
-	// 新建会话模式
-	stmt = db.Session(&gorm.Session{DryRun: true}).First(&user, 2).Statement
-	sql = db.Dialector.Explain(stmt.SQL.String(), stmt.Vars...)
-	result, need := Tag("junmo", sql)
-	if need {
-		db.First(&user, 2)
-		t.Log("result11", user)
-		SetTag("junmo", sql, user)
-	}
-	t.Log("result", result)
+	db.DB().AutoMigrate(&UserTest{})
+	stmt := db.DryRun().Find(&user, 1).Statement
+	tag := "users000"
+	err := db.SetTag(tag).PrepareSql(stmt.SQL.String(), stmt.Vars...).Fetch(&user)
+	fmt.Println(user.ID, err)
 
 	var users []UserTest
 	// 会话模式
-	tx := db.Session(&gorm.Session{PrepareStmt: true})
-	tx.First(&user, 1)
-	tx.Find(&users)
-	tx.Model(&user).Update("Age", 18)
-
-	// returns prepared statements manager
-	stmtManger, ok := tx.ConnPool.(*gorm.PreparedStmtDB)
-
-	// 关闭 *当前会话* 的预编译模式
-	//stmtManger.Close()
-
-	// 为 *当前会话* 预编译 SQL
-	t.Log(ok, stmtManger.PreparedSQL, stmtManger.Stmts) // => []string{}
-
-	// 为当前数据库连接池的（所有会话）开启预编译模式
-	//stmtManger.Stmts // map[string]*sql.Stmt
-
-	for sql, stmt := range stmtManger.Stmts {
-		//sql  // 预编译 SQL
-		//stmt // 预编译模式
-		t.Log(sql, stmt)
-		stmt.Close() // 关闭预编译模式
-	}
-
+	stmt = db.DryRun().Find(&users).Statement
+	db.SetTag(tag).PrepareSql(stmt.SQL.String(), stmt.Vars...).Fetch(&users)
+	fmt.Println("result", len(users))
+	// OutPut:
+	// 	1 <nil>
+	//result 3
 }
-
 func BenchmarkPrepare1(b *testing.B) {
 	dsn := "root:123456@tcp(127.0.0.1:3306)/lxq?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
+	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < b.N; i++ {
 		var users []UserTest
 		var user UserTest
 		tx := db.Session(&gorm.Session{PrepareStmt: true})
 		tx.First(&user, 1)
-		tx.Where("age>?", 10).Find(&users)
+		tx.Where(fmt.Sprintf("name='junmo-%d' AND age>?", rand.Int()), 10).Find(&users)
 	}
 
+}
+
+func BenchmarkSelect(b *testing.B) {
+	db := NewDb()
+	var user UserTest
+	stmt := db.DryRun().Find(&user, 1).Statement
+	tag := "users000"
+	for i := 0; i < b.N; i++ {
+		db.SetTag(tag).PrepareSql(stmt.SQL.String(), stmt.Vars...).Fetch(&user)
+	}
 }
 func BenchmarkPrepare2(b *testing.B) {
 	dsn := "root:123456@tcp(127.0.0.1:3306)/lxq?charset=utf8mb4&parseTime=True&loc=Local"
@@ -103,11 +97,27 @@ func BenchmarkPrepare2(b *testing.B) {
 	if err != nil {
 		panic("failed to connect database")
 	}
+	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < b.N; i++ {
 		var users []UserTest
 		var user UserTest
 		db.First(&user, 1)
-		db.Where("age>?", 10).Find(&users)
+		db.Where(fmt.Sprintf("name='junmo-%d' AND age>?", rand.Int()), 10).Find(&users)
+	}
+}
+func BenchmarkPrepare3(b *testing.B) {
+	dsn := "root:123456@tcp(127.0.0.1:3306)/lxq?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < b.N; i++ {
+		var users []UserTest
+		var user UserTest
+		tx := db.Session(&gorm.Session{PrepareStmt: true})
+		tx.First(&user, 1)
+		tx.Where("name=? AND age>?", fmt.Sprintf("junmo-%d", rand.Int()), 10).Find(&users)
 	}
 }
 
