@@ -3,8 +3,8 @@ package dbcache
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/junmocsq/jlib/jredis"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -131,6 +131,7 @@ func (d *Dao) Fetch(result interface{}) error {
 		}
 		d.setCache(result)
 	} else {
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		return json.Unmarshal([]byte(strJson), result)
 	}
 	return nil
@@ -176,6 +177,7 @@ func (d *Dao) setCache(data interface{}) bool {
 	}
 	s := emptyString
 	if data != nil {
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		jsonRes, err := json.Marshal(data)
 		if err != nil {
 			return false

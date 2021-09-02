@@ -21,6 +21,6 @@ func TestCourse_TableName(t *testing.T) {
 	// drop table student,takes,advisor ,time_slot,prereq;
 	db.AutoMigrate(&Student{}, &Takes{}, &Advisor{}, &TimeSlot{}, &Prereq{})
 	// drop table student,takes,advisor ,time_slot,prereq,classroom,teaches,section,instructor,department ,course;
-	// source /Users/junmo/go/src/lxq/models/university/smallsql.sql
+	// source /Users/junmo/go/src/lxq/model/university/smallsql.sql
 
 }
